@@ -1,8 +1,16 @@
 package main
 
-import "github.com/gin-gonic/gin"
+import (
+	"github.com/gin-gonic/gin"
+	"github.com/spf13/viper"
+)
 
 func main() {
+	env := viper.Get("ENV").(string)
+
+	if env == "production" {
+		gin.SetMode(gin.ReleaseMode)
+	}
 
 	business_type_values := map[string]bool{"RENTAL": true, "SALE": true}
 	listing_type_values := map[string]bool{"DEVELOPMENT": true, "USED": true}
@@ -44,5 +52,6 @@ func main() {
 		c.JSON(200, listings)
 	})
 
-	r.Run() // listen and serve on 0.0.0.0:8080 (for windows "localhost:8080")
+	port := viper.Get("PORT").(string)
+	r.Run(":" + port)
 }
