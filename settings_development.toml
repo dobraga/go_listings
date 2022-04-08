@@ -1,0 +1,4 @@
+DEBUG = true
+max_page = 2
+force_update = true
+SQLALCHEMY_DATABASE_URI = 'postgresql://%s:%s@localhost:15432/%s?sslmode=disable'
