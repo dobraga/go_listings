@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-func init() {
+func LoadSettings() {
 	log.Debug("Loading .env")
 	viper.SetConfigFile(".env")
 	err := viper.ReadInConfig()
@@ -36,7 +36,6 @@ func init() {
 	}
 	log.Debug(fmt.Sprintf("Loaded %s", settings_file))
 
-	SQLALCHEMY_DATABASE_URI := viper.Get("SQLALCHEMY_DATABASE_URI").(string)
 	POSTGRES_USER := viper.Get("POSTGRES_USER")
 	if POSTGRES_USER == nil {
 		panic("Need 'POSTGRES_USER' variable in .env file")
@@ -52,7 +51,13 @@ func init() {
 		panic("Need 'POSTGRES_DB' variable in .env file")
 	}
 
-	SQLALCHEMY_DATABASE_URI = fmt.Sprintf(SQLALCHEMY_DATABASE_URI, POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB)
+	SQLALCHEMY_PORT := viper.Get("SQLALCHEMY_PORT")
+	if POSTGRES_DB == nil {
+		panic("Need 'SQLALCHEMY_PORT' variable in .env file")
+	}
+
+	SQLALCHEMY_DATABASE_URI := "postgresql://%s:%s@localhost:%s/%s?sslmode=disable"
+	SQLALCHEMY_DATABASE_URI = fmt.Sprintf(SQLALCHEMY_DATABASE_URI, POSTGRES_USER, POSTGRES_PASSWORD, SQLALCHEMY_PORT, POSTGRES_DB)
 
 	viper.Set("SQLALCHEMY_DATABASE_URI", SQLALCHEMY_DATABASE_URI)
 }
