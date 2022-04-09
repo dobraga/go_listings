@@ -1,22 +1,24 @@
 package main
 
-import "time"
+import (
+	"time"
+)
 
-type Listing struct {
-	Listing listing `json:"listing"`
-	Medias  []media `json:"medias"`
+type Property struct {
+	Listing Listing `json:"listing"`
+	Medias  []Media `json:"medias"`
 }
 
-type media struct {
+type Media struct {
 	Url string `json:"url"`
 }
 
-type listing struct {
+type Listing struct {
 	Id              string    `json:"id"`
 	Title           string    `json:"title"`
 	TotalAreas      []int     `json:"totalAreas"`
 	UsableAreas     []int     `json:"usableAreas"`
-	Address         address   `json:"address"`
+	Address         Address   `json:"address"`
 	Amenities       []string  `json:"amenities"`
 	Bathrooms       []int     `json:"bathrooms"`
 	Bedrooms        []int     `json:"bedrooms"`
@@ -28,7 +30,7 @@ type listing struct {
 	UsageTypes      []string  `json:"usageTypes"`
 	ParkingSpaces   []int     `json:"parkingSpaces"`
 	Portal          string    `json:"portal"`
-	PricingInfos    []pricing `json:"pricingInfos"`
+	PricingInfos    []Pricing `json:"pricingInfos"`
 	PropertyType    string    `json:"propertyType"`
 	PublicationType string    `json:"publicationType"`
 	UnitTypes       []string  `json:"unitTypes"`
@@ -37,12 +39,12 @@ type listing struct {
 	UpdatedAt       time.Time `json:"updatedAt"`
 }
 
-type address struct {
+type Address struct {
 	City         string  `json:"city"`
 	Complement   string  `json:"complement"`
 	LocationId   string  `json:"locationId"`
 	Neighborhood string  `json:"neighborhood"`
-	Point        latlong `json:"point"`
+	Point        LatLong `json:"point"`
 	State        string  `json:"state"`
 	StateAcronym string  `json:"stateAcronym"`
 	StreetNumber string  `json:"streetNumber"`
@@ -50,12 +52,12 @@ type address struct {
 	Zone         string  `json:"zone"`
 }
 
-type latlong struct {
+type LatLong struct {
 	Lat float32 `json:"lat"`
 	Lon float32 `json:"lon"`
 }
 
-type pricing struct {
+type Pricing struct {
 	BusinessType    string `json:"businessType"`
 	MonthlyCondoFee string `json:"monthlyCondoFee"`
 	Price           string `json:"price"`
