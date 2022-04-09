@@ -7,10 +7,15 @@ import (
 type Property struct {
 	Listing Listing `json:"listing"`
 	Medias  []Media `json:"medias"`
+	Link    Link    `json:"link"`
 }
 
 type Media struct {
 	Url string `json:"url"`
+}
+
+type Link struct {
+	Href string `json:"href"`
 }
 
 type Listing struct {
