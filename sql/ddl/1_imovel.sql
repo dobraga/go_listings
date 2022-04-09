@@ -1,7 +1,6 @@
 CREATE TABLE imovel (
-    url varchar NOT NULL,
+    url varchar NOT NULL PRIMARY KEY,
     neighborhood varchar NOT NULL,
-    location_id varchar NOT NULL,
     state varchar NOT NULL,
     city varchar NOT NULL,
     "zone" varchar NOT NULL,
@@ -32,7 +31,5 @@ CREATE TABLE imovel (
     address varchar NULL,
     lat_metro float8 NULL,
     lon_metro float8 NULL,
-    created timestamp NULL DEFAULT now(),
-    updated timestamp NULL DEFAULT now(),
-    CONSTRAINT imovel_pkey PRIMARY KEY (url)
+    updated timestamp NULL DEFAULT now()
 );
