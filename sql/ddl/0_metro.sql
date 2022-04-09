@@ -4,5 +4,5 @@ CREATE TABLE metro (
     estacao varchar NOT NULL,
     lat float8 NOT NULL,
     lng float8 NOT NULL,
-    url varchar NOT NULL,
+    url varchar NOT NULL
 );
