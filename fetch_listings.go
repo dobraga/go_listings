@@ -14,7 +14,7 @@ func FetchListings(
 	location map[string]string,
 	business_type string,
 	listing_type string,
-) []Listing {
+) []Property {
 
 	size := 24
 	site_info := viper.Get("sites").(map[string]interface{})[origin].(map[string]interface{})
@@ -36,7 +36,7 @@ func FetchListings(
 
 	log.Info(fmt.Sprintf("Getting %d/%d pages with %d listings from '%s'", max_page_int, total_pages, qtd_listings, origin))
 
-	var all_listings []Listing
+	var all_listings []Property
 
 	for page := 1; page <= int(max_page_int); page++ {
 		log.Info(fmt.Sprintf("Getting page %d from '%s'", page, origin))
@@ -101,8 +101,8 @@ func createQuery(
 	}
 }
 
-func getListings(bytes_data []byte) []Listing {
-	var page_listings []Listing
+func getListings(bytes_data []byte) []Property {
+	var page_listings []Property
 
 	data := map[string]interface{}{}
 	err := json.Unmarshal(bytes_data, &data)
