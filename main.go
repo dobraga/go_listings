@@ -6,6 +6,9 @@ import (
 )
 
 func main() {
+	LoadSettings()
+	CreateTables()
+
 	env := viper.Get("ENV").(string)
 
 	if env == "production" {
