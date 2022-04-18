@@ -8,7 +8,7 @@ require (
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/viper v1.10.1
 	gorm.io/driver/postgres v1.3.4
-	gorm.io/gorm v1.23.1
+	gorm.io/gorm v1.23.4
 )
 
 require (
