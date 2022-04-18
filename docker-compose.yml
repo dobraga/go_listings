@@ -11,6 +11,18 @@ services:
             - pgdata:/var/lib/postgresql/data
         networks:
             - network
+    
+    app:
+        build: .
+        restart: always
+        env_file: 
+            - ./.env
+        ports:
+            - ${PORT}:${PORT}
+        networks:
+            - network
+        depends_on:
+            - db
 
 networks: 
     network:
