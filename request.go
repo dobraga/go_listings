@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+
+	log "github.com/sirupsen/logrus"
 )
 
 var client http.Client = http.Client{}
@@ -14,7 +16,9 @@ func MakeRequest(
 	headers map[string]string,
 ) []byte {
 	req, err := http.NewRequest("GET", url, nil)
-	Check(err)
+	if err != nil {
+		log.Error(fmt.Sprintf("Erro na requisição da página '%s': %v", url, err))
+	}
 
 	// Query String
 	q := req.URL.Query()
@@ -31,12 +35,16 @@ func MakeRequest(
 
 	// Request
 	resp, err := client.Do(req)
-	Check(err)
+	if err != nil {
+		log.Error(fmt.Sprintf("Erro na requisição da página '%s' %v: %v", url, query, err))
+	}
 	defer resp.Body.Close()
 
 	// Response to interface
 	bytes_data, err := ioutil.ReadAll(resp.Body)
-	Check(err)
+	if err != nil {
+		log.Error(fmt.Sprintf("Erro no parse da página '%s' %v: %v", url, query, err))
+	}
 
 	return bytes_data
 }

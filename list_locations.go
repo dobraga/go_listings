@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
@@ -27,7 +28,9 @@ func ListLocations(local string, origin string) map[string]map[string]string {
 
 	data := map[string]interface{}{}
 	err := json.Unmarshal(bytes_data, &data)
-	Check(err)
+	if err != nil {
+		log.Error(fmt.Sprintf("Erro ao listar localizações %s: %v", local, err))
+	}
 
 	// Interface to map and get listings
 	data = data["neighborhood"].(map[string]interface{})

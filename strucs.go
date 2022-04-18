@@ -1,10 +1,129 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
+	"strconv"
+	"strings"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type Property struct {
+	Origin        string `gorm:"primaryKey"`
+	Url           string `gorm:"primaryKey"`
+	Neighborhood  string
+	State         string
+	City          string
+	Zone          string
+	BusinessType  string `gorm:"primaryKey"`
+	ListingType   string
+	Title         string
+	UsableArea    int
+	Floors        int
+	UnitTypes     string
+	Bedrooms      int
+	Bathrooms     int
+	Suites        int
+	ParkingSpaces int
+	Amenities     string
+	Lat           float64
+	Lon           float64
+	Price         float64
+	CondoFee      float64
+	Created_date  time.Time
+	Updated_date  time.Time
+	Images        string
+}
+
+func (p *Property) Unmarshal(bytes_data []byte, url, BusinessType string) ([]Property, error) {
+	var listNestedProperty []NestedProperty
+	var listProperty []Property
+	medias := []string{}
+
+	// Bytes to map of interfaces
+	data := map[string]interface{}{}
+	err := json.Unmarshal(bytes_data, &data)
+	if err != nil {
+		log.Error(fmt.Sprintf("Erro no parse dos dados '%v': %v", bytes_data, err))
+	}
+
+	// Interface to map and get listings
+	data = data["search"].(map[string]interface{})
+	data = data["result"].(map[string]interface{})
+	listings_page := data["listings"].([]interface{})
+
+	// Slice of listings to Struct
+	jsonBytes, err := json.Marshal(listings_page)
+	if err != nil {
+		log.Error(fmt.Sprintf("Erro na transformação para binário '%v': %v", listings_page, err))
+		// os.WriteFile("test.json", jsonBytes, 0666)
+	}
+
+	err = json.Unmarshal(jsonBytes, &listNestedProperty)
+	if err != nil {
+		log.Error(fmt.Sprintf("Erro na transformação para struct: %v", err))
+	}
+
+	// Unnest struct
+	for _, nestedProperty := range listNestedProperty {
+		var property Property
+
+		for _, media := range nestedProperty.Medias {
+			medias = append(medias, media.Url)
+		}
+
+		media := strings.Join(medias, "|")
+		amenities := strings.Join(nestedProperty.Listing.Amenities, "|")
+
+		for _, PricingInfos := range nestedProperty.Listing.PricingInfos {
+			if PricingInfos.BusinessType == BusinessType {
+				price, err := strconv.ParseFloat(PricingInfos.Price, 32)
+				if err != nil {
+					log.Error(fmt.Sprintf("Erro na transformação do valor '%s' para float: %v", PricingInfos.Price, err))
+				}
+
+				monthlyCondoFee, _ := strconv.ParseFloat(PricingInfos.MonthlyCondoFee, 32)
+
+				strUsableArea := GetFirst(nestedProperty.Listing.UsableAreas, property.Url, "UsableAreas")
+				usableArea, _ := strconv.Atoi(strUsableArea)
+
+				property.Origin = url
+				property.Url = nestedProperty.Link.Href
+				property.Neighborhood = nestedProperty.Listing.Address.Neighborhood
+				property.State = nestedProperty.Listing.Address.State
+				property.City = nestedProperty.Listing.Address.City
+				property.Zone = nestedProperty.Listing.Address.Zone
+				property.BusinessType = BusinessType
+				property.ListingType = nestedProperty.Listing.ListingType
+				property.Title = nestedProperty.Listing.Title
+				property.UsableArea = usableArea
+				property.Floors = GetFirst(nestedProperty.Listing.Floors, property.Url, "Floors")
+				property.UnitTypes = GetFirst(nestedProperty.Listing.UnitTypes, property.Url, "UnitTypes")
+				property.Bedrooms = GetFirst(nestedProperty.Listing.Bedrooms, property.Url, "Bedrooms")
+				property.Bathrooms = GetFirst(nestedProperty.Listing.Bathrooms, property.Url, "Bathrooms")
+				property.Suites = GetFirst(nestedProperty.Listing.Suites, property.Url, "Suites")
+				property.ParkingSpaces = GetFirst(nestedProperty.Listing.ParkingSpaces, property.Url, "ParkingSpaces")
+				property.Amenities = amenities
+				property.Lat = float64(nestedProperty.Listing.Address.Point.Lat)
+				property.Lon = float64(nestedProperty.Listing.Address.Point.Lon)
+				property.Price = price
+				property.CondoFee = monthlyCondoFee
+				property.Created_date = nestedProperty.Listing.CreatedAt
+				property.Updated_date = nestedProperty.Listing.UpdatedAt
+				property.Images = media
+
+				listProperty = append(listProperty, property)
+			}
+		}
+
+	}
+
+	return listProperty, nil
+}
+
+type NestedProperty struct {
 	Listing Listing `json:"listing"`
 	Medias  []Media `json:"medias"`
 	Link    Link    `json:"link"`
@@ -21,8 +140,7 @@ type Link struct {
 type Listing struct {
 	Id              string    `json:"id"`
 	Title           string    `json:"title"`
-	TotalAreas      []int     `json:"totalAreas"`
-	UsableAreas     []int     `json:"usableAreas"`
+	UsableAreas     []string  `json:"usableAreas"`
 	Address         Address   `json:"address"`
 	Amenities       []string  `json:"amenities"`
 	Bathrooms       []int     `json:"bathrooms"`
@@ -30,7 +148,6 @@ type Listing struct {
 	Suites          []int     `json:"suites"`
 	Description     string    `json:"description"`
 	Floors          []int     `json:"floors"`
-	UnitFloor       []int     `json:"unitFloor"`
 	ListingType     string    `json:"listingType"`
 	UsageTypes      []string  `json:"usageTypes"`
 	ParkingSpaces   []int     `json:"parkingSpaces"`

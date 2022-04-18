@@ -3,17 +3,15 @@ package main
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
+	"gorm.io/gorm"
 )
+
+var DB *gorm.DB
 
 func main() {
 	LoadSettings()
-	CreateTables()
-
-	env := viper.Get("ENV").(string)
-
-	if env == "production" {
-		gin.SetMode(gin.ReleaseMode)
-	}
+	DB = Connect()
+	DB.AutoMigrate(&Property{})
 
 	business_type_values := map[string]bool{"RENTAL": true, "SALE": true}
 	listing_type_values := map[string]bool{"DEVELOPMENT": true, "USED": true}
@@ -50,11 +48,17 @@ func main() {
 			return
 		}
 
-		listings := FetchListings("vivareal", location, business_type, listing_type)
+		listings, err := FetchListings(DB, "vivareal", location, business_type, listing_type)
 
-		c.JSON(200, listings)
+		if err != nil {
+			c.JSON(400, err)
+			return
+		} else {
+			c.JSON(200, listings)
+		}
+
 	})
 
-	port := viper.Get("PORT").(string)
+	port := viper.GetString("PORT")
 	r.Run(":" + port)
 }

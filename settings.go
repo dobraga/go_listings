@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 
+	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
@@ -16,48 +17,41 @@ func LoadSettings() {
 	}
 	log.Debug("Loaded .env")
 
-	log.Debug("Loading settings.toml")
+	env := viper.Get("ENV").(string)
+
+	log.Info(fmt.Sprintf("Utilizando '%s' env", env))
+
+	switch env {
+	case "DEVELOPMENT":
+		log.SetLevel(log.DebugLevel)
+	case "PRODUCTION":
+		gin.SetMode(gin.ReleaseMode)
+		log.SetLevel(log.WarnLevel)
+	default:
+		log.Fatal("ENV precisa ser ['DEVELOPMENT', 'PRODUCTION']")
+	}
+
+	// Non nullable configs
+	for _, variable := range []string{"POSTGRES_USER", "POSTGRES_PASSWORD", "POSTGRES_DB", "POSTGRES_PORT"} {
+		value := viper.Get(variable)
+		if value == nil {
+			panic(fmt.Sprintf("Need '%s' variable in .env file", variable))
+		}
+	}
+
+	// env configs
+	for _, variable := range []string{"POSTGRES_HOST", "DEBUG", "max_page", "force_update"} {
+		env_variable := fmt.Sprintf("%s_%s", env, variable)
+		value := viper.Get(env_variable)
+		viper.Set(variable, value)
+		if value == nil {
+			panic(fmt.Sprintf("Need '%s' variable in .env file", env_variable))
+		}
+	}
+
 	viper.SetConfigFile("settings.toml")
 	err = viper.MergeInConfig()
 	if err != nil {
 		panic(fmt.Errorf("fatal error config file: %w", err))
 	}
-	log.Debug("Loaded settings.toml")
-
-	env := viper.Get("ENV")
-
-	settings_file := fmt.Sprintf("settings_%s.toml", env)
-	log.Debug(fmt.Sprintf("Loading %s", settings_file))
-
-	viper.SetConfigFile(settings_file)
-	err = viper.MergeInConfig()
-	if err != nil {
-		panic(fmt.Errorf("fatal error config file: %w", err))
-	}
-	log.Debug(fmt.Sprintf("Loaded %s", settings_file))
-
-	POSTGRES_USER := viper.Get("POSTGRES_USER")
-	if POSTGRES_USER == nil {
-		panic("Need 'POSTGRES_USER' variable in .env file")
-	}
-
-	POSTGRES_PASSWORD := viper.Get("POSTGRES_PASSWORD")
-	if POSTGRES_PASSWORD == nil {
-		panic("Need 'POSTGRES_PASSWORD' variable in .env file")
-	}
-
-	POSTGRES_DB := viper.Get("POSTGRES_DB")
-	if POSTGRES_DB == nil {
-		panic("Need 'POSTGRES_DB' variable in .env file")
-	}
-
-	SQLALCHEMY_PORT := viper.Get("SQLALCHEMY_PORT")
-	if POSTGRES_DB == nil {
-		panic("Need 'SQLALCHEMY_PORT' variable in .env file")
-	}
-
-	SQLALCHEMY_DATABASE_URI := "postgresql://%s:%s@localhost:%s/%s?sslmode=disable"
-	SQLALCHEMY_DATABASE_URI = fmt.Sprintf(SQLALCHEMY_DATABASE_URI, POSTGRES_USER, POSTGRES_PASSWORD, SQLALCHEMY_PORT, POSTGRES_DB)
-
-	viper.Set("SQLALCHEMY_DATABASE_URI", SQLALCHEMY_DATABASE_URI)
 }

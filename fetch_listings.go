@@ -7,74 +7,102 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 func FetchListings(
+	DB *gorm.DB,
 	origin string,
 	location map[string]string,
 	business_type string,
 	listing_type string,
-) []Property {
+) ([]Property, []error) {
+	var all_listings []Property
+	var page_listings Property
+	var errors []error
 
 	size := 24
 	site_info := viper.Get("sites").(map[string]interface{})[origin].(map[string]interface{})
 	base_url := fmt.Sprintf("https://%s/v2/listings", site_info["api"])
 
-	max_page := viper.Get("max_page")
-	max_page_int := max_page.(int64)
+	max_page := viper.GetInt64("max_page")
 
 	headers := CreateHeaders(origin)
 	query := createQuery(origin, location, business_type, listing_type, size)
 
-	qtd_listings := qtdListings(base_url, query, headers)
+	qtd_listings, err := qtdListings(base_url, query, headers)
+	if err != nil {
+		return nil, []error{err}
+	}
 	total_pages := int64(qtd_listings / size)
-	if max_page_int <= 0 {
-		max_page_int = total_pages
+	if max_page <= 0 {
+		max_page = total_pages
 	} else {
-		max_page_int = Min(max_page_int, total_pages)
+		max_page = Min(max_page, total_pages)
 	}
 
-	log.Info(fmt.Sprintf("Getting %d/%d pages with %d listings from '%s'", max_page_int, total_pages, qtd_listings, origin))
+	log.Info(fmt.Sprintf("Getting %d/%d pages with %d listings from '%s'", max_page, total_pages, qtd_listings, origin))
 
-	var all_listings []Property
-
-	for page := 1; page <= int(max_page_int); page++ {
+	for page := 1; page <= int(max_page); page++ {
 		log.Info(fmt.Sprintf("Getting page %d from '%s'", page, origin))
 		query["from"] = page * query["size"].(int)
 
 		bytes_data := MakeRequest(base_url, query, headers)
 
-		page_listings := getListings(bytes_data)
-
-		for _, listing := range page_listings {
-			all_listings = append(all_listings, listing)
+		listings, err := page_listings.Unmarshal(bytes_data, origin, business_type)
+		if err != nil {
+			log.Error(fmt.Sprintf("Erro ao parse da página %d do site '%s': %v", page, origin, err))
+			errors = append(errors, err)
 		}
 
-		if page < int(max_page_int) {
+		all_listings = append(all_listings, listings...)
+
+		if page < int(max_page) {
 			time.Sleep(300 * time.Millisecond)
 		}
 	}
 
-	return all_listings
+	result := DB.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "origin"}, {Name: "url"}, {Name: "business_type"}},
+		UpdateAll: true,
+	}).CreateInBatches(all_listings, 100)
+
+	if result.Error != nil {
+		log.Error(result.Error)
+		errors = append(errors, result.Error)
+	}
+
+	return all_listings, errors
 }
 
 func qtdListings(
 	base_url string,
 	query map[string]interface{},
 	headers map[string]string,
-) int {
+) (int, error) {
 
 	bytes_data := MakeRequest(base_url, query, headers)
 
 	data := map[string]interface{}{}
 	err := json.Unmarshal(bytes_data, &data)
-	Check(err)
+	if err != nil {
+		err := fmt.Errorf(fmt.Sprintf("erro ao buscar a quantidade de propriedades da página '%s' '%v' '%v': %v", base_url, query, bytes_data, err))
+		log.Error(err)
+		return 0, err
+	}
+
+	if !Contains(GetKeys(data), "search") {
+		err := fmt.Errorf("not found search listings '%v' from '%s' '%v'", data, base_url, query)
+		log.Error(err)
+		return 0, err
+	}
 
 	data = data["search"].(map[string]interface{})
 
 	qtd_listings := data["totalCount"].(float64)
 
-	return int(qtd_listings)
+	return int(qtd_listings), nil
 
 }
 
@@ -99,26 +127,4 @@ func createQuery(
 		"size":                size,
 		"from":                24,
 	}
-}
-
-func getListings(bytes_data []byte) []Property {
-	var page_listings []Property
-
-	data := map[string]interface{}{}
-	err := json.Unmarshal(bytes_data, &data)
-	Check(err)
-
-	// Interface to map and get listings
-	data = data["search"].(map[string]interface{})
-	data = data["result"].(map[string]interface{})
-	listings_page := data["listings"].([]interface{})
-
-	// Slice of listings to Struct
-	jsonString, err := json.Marshal(listings_page)
-	Check(err)
-	// os.WriteFile("test.json", jsonString, 0666)
-
-	json.Unmarshal(jsonString, &page_listings)
-
-	return page_listings
 }
