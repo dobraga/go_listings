@@ -17,7 +17,7 @@ func FetchListings(
 	location map[string]string,
 	business_type string,
 	listing_type string,
-) ([]Property, []error) {
+) (string, []error) {
 	var all_listings []Property
 	var page_listings Property
 	var errors []error
@@ -33,7 +33,7 @@ func FetchListings(
 
 	qtd_listings, err := qtdListings(base_url, query, headers)
 	if err != nil {
-		return nil, []error{err}
+		return "", []error{err}
 	}
 	total_pages := int64(qtd_listings / size)
 	if max_page <= 0 {
@@ -73,7 +73,7 @@ func FetchListings(
 		errors = append(errors, result.Error)
 	}
 
-	return all_listings, errors
+	return fmt.Sprintf("Saved %d pages from '%s'", max_page, origin), errors
 }
 
 func qtdListings(

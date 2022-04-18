@@ -1,6 +1,9 @@
 package main
 
 import (
+	"fmt"
+	"sync"
+
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
 	"gorm.io/gorm"
@@ -15,6 +18,9 @@ func main() {
 
 	business_type_values := map[string]bool{"RENTAL": true, "SALE": true}
 	listing_type_values := map[string]bool{"DEVELOPMENT": true, "USED": true}
+
+	mapSites := viper.GetStringMap("sites")
+	todosSites := GetKeys(mapSites)
 
 	r := gin.Default()
 
@@ -48,13 +54,44 @@ func main() {
 			return
 		}
 
-		listings, err := FetchListings(DB, "vivareal", location, business_type, listing_type)
+		var errs []error
+		var oks []string
+		var wg sync.WaitGroup
+		channel_err := make(chan []error)
+		channel_ok := make(chan string)
 
-		if err != nil {
-			c.JSON(400, err)
+		for _, site := range todosSites {
+			wg.Add(1)
+
+			go func(s string, w sync.WaitGroup) {
+				defer w.Done()
+				msg, err := FetchListings(DB, s, location, business_type, listing_type)
+				if err != nil {
+					channel_err <- err
+				} else {
+					channel_ok <- msg
+				}
+			}(site, wg)
+		}
+		wg.Wait()
+
+		for err := range channel_err {
+			if err != nil {
+				errs = append(errs, err...)
+			}
+		}
+
+		for ok := range channel_ok {
+			if ok != "" {
+				oks = append(oks, ok)
+			}
+		}
+
+		if errs != nil {
+			c.JSON(400, errs)
 			return
 		} else {
-			c.JSON(200, listings)
+			c.JSON(200, fmt.Sprintf("Salvo com sucesso: %v", oks))
 		}
 
 	})
