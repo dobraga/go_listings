@@ -26,7 +26,7 @@ func LoadSettings() {
 		log.SetLevel(log.DebugLevel)
 	case "PRODUCTION":
 		gin.SetMode(gin.ReleaseMode)
-		log.SetLevel(log.WarnLevel)
+		log.SetLevel(log.InfoLevel)
 	default:
 		log.Fatal("ENV precisa ser ['DEVELOPMENT', 'PRODUCTION']")
 	}
